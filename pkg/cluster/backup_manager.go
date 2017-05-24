@@ -40,8 +40,9 @@ const (
 )
 
 var (
-	errNoPVForBackup       = errors.New("no backup could be created due to PVProvisioner (none) is set")
-	errNoS3ConfigForBackup = errors.New("no backup could be created due to S3 configuration not set")
+	errNoPVForBackup        = errors.New("no backup could be created due to PVProvisioner (none) is set")
+	errNoS3ConfigForBackup  = errors.New("no backup could be created due to S3 configuration not set")
+	errNoGCSConfigForBackup = errors.New("no backup could be created due to GCS configuration not set")
 )
 
 type backupManager struct {
@@ -86,6 +87,11 @@ func (bm *backupManager) setupStorage() (s backupstorage.Storage, err error) {
 			return nil, errNoS3ConfigForBackup
 		}
 		s, err = backupstorage.NewS3Storage(c.S3Context, c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, *b)
+	case spec.BackupStorageTypeGCS:
+		if len(c.GCSContext.KeyName) == 0 && b.GCS == nil {
+			return nil, errNoGCSConfigForBackup
+		}
+		s, err = backupstorage.NewGCSStorage(c.GCSContext, c.KubeCli, cl.Metadata.Name, cl.Metadata.Namespace, *b)
 	}
 	return s, err
 }
@@ -158,6 +164,12 @@ func (bm *backupManager) makeSidecarDeployment() *appsv1beta1.Deployment {
 			k8sutil.AttachS3ToPodSpec(&podTemplate.Spec, *ss)
 		} else {
 			k8sutil.AttachOperatorS3ToPodSpec(&podTemplate.Spec, c.S3Context)
+		}
+	case spec.BackupStorageTypeGCS:
+		if gs := cl.Spec.Backup.GCS; gs != nil {
+			k8sutil.AttachGCSToPodSpec(&podTemplate.Spec, *gs)
+		} else {
+			k8sutil.AttachOperatorGCSToPodSpec(&podTemplate.Spec, c.GCSContext)
 		}
 	}
 	name := k8sutil.BackupSidecarName(cl.Metadata.Name)
