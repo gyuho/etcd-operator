@@ -22,9 +22,12 @@ const (
 	BackupStorageTypeDefault          = ""
 	BackupStorageTypePersistentVolume = "PersistentVolume"
 	BackupStorageTypeS3               = "S3"
+	BackupStorageTypeGCS              = "GCS"
 
 	AWSSecretCredentialsFileName = "credentials"
 	AWSSecretConfigFileName      = "config"
+
+	GCSJSONKeyFileName = "gcs-json-key"
 )
 
 var errPVZeroSize = errors.New("PV backup should not have 0 size volume")
@@ -66,8 +69,9 @@ func (bp *BackupPolicy) Validate() error {
 }
 
 type StorageSource struct {
-	PV *PVSource `json:"pv,omitempty"`
-	S3 *S3Source `json:"s3,omitempty"`
+	PV  *PVSource  `json:"pv,omitempty"`
+	S3  *S3Source  `json:"s3,omitempty"`
+	GCS *GCSSource `json:"gcs,omitempty"`
 }
 
 type PVSource struct {
@@ -92,6 +96,20 @@ type S3Source struct {
 	//
 	// AWSSecret overwrites the default etcd operator wide AWS credential and config.
 	AWSSecret string `json:"awsSecret,omitempty"`
+}
+
+type GCSSource struct {
+	// GCSKey overwrites the default etcd operator wide GCP credential key file.
+	// The name of the secret object that stores the GCS JSON credential key file.
+	GCSKey string `json:"gcsKey,omitempty"`
+
+	// GCSBucket overwrites the default etcd operator wide bucket.
+	// The name of the GCP Google Cloud Storage bucket to store backups in.
+	GCSBucket string `json:"gcsBucket,omitempty"`
+
+	// GCSScope overwrites the default etcd operator wide scope.
+	// GCP Google Cloud Storage bucket permission.
+	GCSScope string `json:"gcsScope,omitempty"`
 }
 
 type BackupServiceStatus struct {
