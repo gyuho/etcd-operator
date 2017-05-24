@@ -21,6 +21,7 @@ import (
 	"time"
 
 	backupenv "github.com/coreos/etcd-operator/pkg/backup/env"
+	"github.com/coreos/etcd-operator/pkg/backup/gcs/gcsconfig"
 	"github.com/coreos/etcd-operator/pkg/backup/s3/s3config"
 	"github.com/coreos/etcd-operator/pkg/spec"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
@@ -43,6 +44,8 @@ const (
 	awsConfigDir              = "/root/.aws/config/"
 	awsSecretVolName          = "secret-aws"
 	awsConfigVolName          = "config-aws"
+	gcsCredVolName            = "cred-gcs"
+	gcsCredDir                = "/root/.gcp/"
 	fromDirMountDir           = "/mnt/backup/from"
 
 	PVBackupV1 = "v1" // TODO: refactor and combine this with pkg/backup.PVBackupV1
@@ -180,6 +183,36 @@ func AttachOperatorS3ToPodSpec(ps *v1.PodSpec, s3Ctx s3config.S3Context) {
 		Name:  backupenv.AWSS3Bucket,
 		Value: s3Ctx.S3Bucket,
 	})
+}
+
+func AttachGCSToPodSpec(ps *v1.PodSpec, ss spec.GCSSource) {
+	ps.Containers[0].VolumeMounts = append(ps.Containers[0].VolumeMounts, v1.VolumeMount{
+		Name:      gcsCredVolName,
+		MountPath: gcsCredDir,
+	})
+	ps.Volumes = append(ps.Volumes, v1.Volume{
+		Name: gcsCredVolName,
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: ss.GCSKey,
+			},
+		},
+	})
+}
+
+func AttachOperatorGCSToPodSpec(ps *v1.PodSpec, gcsCtx gcsconfig.GCSContext) {
+	ps.Containers[0].VolumeMounts = []v1.VolumeMount{{
+		Name:      gcsCredVolName,
+		MountPath: gcsCredDir,
+	}}
+	ps.Volumes = []v1.Volume{{
+		Name: gcsCredVolName,
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: gcsCtx.KeyName,
+			},
+		},
+	}}
 }
 
 func NewBackupPodTemplate(clusterName, account string, sp spec.ClusterSpec) v1.PodTemplateSpec {
